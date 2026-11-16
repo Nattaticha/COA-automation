@@ -1,0 +1,16 @@
+# --- confidential: must never leave the company (project rule: no data to external systems) ---
+data/
+results/
+models/
+third_party/
+*.pdf
+workflow COA*.md
+COA system map.html
+ocr_pipeline/data/
+
+# --- environment / generated ---
+env/
+__pycache__/
+*.pyc
+test.py
+_github_upload/

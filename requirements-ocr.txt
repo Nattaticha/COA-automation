@@ -1,0 +1,15 @@
+# core (zoning, metrics, dataset)
+pymupdf
+numpy
+pandas
+openpyxl
+lxml
+rapidfuzz
+apted
+# OpenCV comes with paddleocr (opencv-contrib-python). Install opencv-python-headless ONLY if you skip paddleocr.
+
+# OCR engines to compare
+pytesseract          # + Tesseract binary (UB Mannheim installer) with eng + tha traineddata
+easyocr              # pulls torch (CPU) ~ 200 MB
+paddlepaddle>=3.0    # CPU build
+paddleocr>=3.0
