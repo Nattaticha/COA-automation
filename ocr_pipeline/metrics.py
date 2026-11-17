@@ -71,6 +71,12 @@ def cell_accuracy(gt: list[list[str]], pred: list[list[str]]) -> float:
     return ok / total
 
 
+def cell_accuracy_nospace(gt, pred) -> float:
+    """Cell accuracy ignoring whitespace ('≤ 4.0' == '≤4.0'): what matters for a COA value."""
+    strip = lambda g: [[re.sub(r"\s+", "", c) for c in r] for r in g]
+    return cell_accuracy(strip(gt), strip(pred))
+
+
 def structure_match(gt, pred) -> bool:
     return len(gt) == len(pred) and all(len(a) == len(b) for a, b in zip(gt, pred))
 

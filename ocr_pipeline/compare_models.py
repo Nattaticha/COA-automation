@@ -25,7 +25,7 @@ import pandas as pd
 
 from . import config
 from .engines import get_engine
-from .metrics import cell_accuracy, cer, cer_nospace, corpus_rate, digits_ok, detection_pr, structure_match, teds, wer
+from .metrics import cell_accuracy, cell_accuracy_nospace, cer, cer_nospace, corpus_rate, digits_ok, detection_pr, structure_match, teds, wer
 from .preprocess import imread, parse_steps, preprocess
 from .zoning import get_layout, get_table_reader
 
@@ -101,7 +101,8 @@ def eval_tables(reader, files, steps) -> list[dict]:
         dt = time.perf_counter() - t0
         rows.append({"reader": reader.name, "id": png.stem, "variant": gt["variant"], "supplier": gt["supplier"],
                      "gt_rows": len(gt["cells"]), "pred_rows": len(pred),
-                     "cell_acc": cell_accuracy(gt["cells"], pred), "teds": teds(gt["cells"], pred),
+                     "cell_acc": cell_accuracy(gt["cells"], pred),
+                     "cell_acc_nospace": cell_accuracy_nospace(gt["cells"], pred), "teds": teds(gt["cells"], pred),
                      "structure_ok": structure_match(gt["cells"], pred), "latency_s": round(dt, 3),
                      "pred_json": json.dumps(pred, ensure_ascii=False)})
     return rows
@@ -192,12 +193,13 @@ def main():
             df = pd.DataFrame(rows)
             df.to_csv(out / "tables.csv", index=False, encoding="utf-8-sig")
             summ = df.groupby(["reader", "variant"]).agg(n=("id", "count"), cell_acc=("cell_acc", "mean"),
+                                                          cell_acc_nospace=("cell_acc_nospace", "mean"),
                                                           TEDS=("teds", "mean"), structure_ok=("structure_ok", "mean"),
                                                           latency_s=("latency_s", "mean")).reset_index()
             sheets["tables_summary"] = summ
             print(summ.to_string(index=False))
             for s in summ.itertuples():
-                runlog += metric_rows("tables", s.reader, f"variant={s.variant}", s.n, cell_acc=s.cell_acc, TEDS=s.TEDS,
+                runlog += metric_rows("tables", s.reader, f"variant={s.variant}", s.n, cell_acc=s.cell_acc, cell_acc_nospace=s.cell_acc_nospace, TEDS=s.TEDS,
                                       structure_ok=s.structure_ok, latency_s=s.latency_s)
             testset_hash_val = testset_hash_val or testset_hash(df["id"])
 

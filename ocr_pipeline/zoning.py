@@ -100,11 +100,13 @@ def zones_native(page: fitz.Page, page_no: int, dpi: int = DPI) -> list[Zone]:
 
 
 # ============================================================ layout detectors (scanned)
-def _line_masks(gray, h_div=30, v_div=40):
+def _line_masks(gray, h_div=30, v_div=40, min_len=80):
+    """Ruling-line masks. min_len (px @300 DPI) must exceed letter height, otherwise letter stems
+    (P, L, d ~30 px) are taken for vertical lines."""
     inv = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 15, 10)
     h, w = gray.shape
-    horiz = cv2.morphologyEx(inv, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (max(15, w // h_div), 1)))
-    vert = cv2.morphologyEx(inv, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(15, h // v_div))))
+    horiz = cv2.morphologyEx(inv, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (max(min_len, w // h_div), 1)))
+    vert = cv2.morphologyEx(inv, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, max(min_len, h // v_div))))
     return horiz, vert
 
 
@@ -251,6 +253,8 @@ class GridTableReader:
         self.name = f"grid+{engine.name}"
 
     def read(self, img) -> tuple[list[list[str]], float]:
+        from .preprocess import deskew
+        img = deskew(img)   # a 1° tilt shifts a 10-row table by ~7 px and closes the column gaps
         lines = self.engine.recognize_lines(img)
         if not lines:
             return [], 0.0
@@ -258,23 +262,29 @@ class GridTableReader:
         text_h = int(np.median([l.bbox[3] - l.bbox[1] for l in lines]))
         rseps, cseps = grid_separators(img)
         if len(cseps) < 3:   # word spaces ~0.3 x text height; column gaps are wider
-            cseps = ink_column_gaps(img, min_gap=max(8, int(0.55 * text_h)))
-        # erase ruling lines so cell crops contain text only (lines confuse the recogniser)
-        horiz, vert = _line_masks(to_gray(img), h_div=15, v_div=15)
-        clean = img.copy()
-        clean[cv2.dilate(horiz | vert, np.ones((5, 5), np.uint8)) > 0] = 255
-        img = clean
+            cseps = ink_column_gaps(img, min_gap=max(8, int(0.45 * text_h)))
         rows = group_rows(lines)
         bands = [(min(l.bbox[1] for l in r), max(l.bbox[3] for l in r)) for r in rows]
         if len(rseps) - 1 >= len(rows):        # fully ruled table: one ruling line per row
             bands = [(int(a), int(b)) for a, b in zip(rseps[:-1], rseps[1:]) if b - a > 0.6 * text_h]
         grid, confs = [], []
-        pad = max(2, text_h // 6)
+        pad = 4
         for y0, y1 in bands:
             row = []
             for x0, x1 in zip(cseps[:-1], cseps[1:]):
-                cell = img[max(0, y0 - pad):min(h, y1 + pad), max(0, int(x0) + 2):min(w, int(x1) - 2)]
-                if cell.size == 0 or (255 - to_gray(cell)).max() < 80:      # blank cell
+                # tight crop = detected text inside this cell (clipped to the cell), NOT the whole cell:
+                # whole-cell crops carry ruling lines + white space that derail rec-only models
+                segs = [l for l in lines if y0 - 2 <= (l.bbox[1] + l.bbox[3]) / 2 <= y1 + 2
+                        and l.bbox[0] < x1 and l.bbox[2] > x0]
+                if not segs:
+                    row.append("")
+                    continue
+                cx0 = max(int(x0), min(l.bbox[0] for l in segs)) - pad
+                cx1 = min(int(x1), max(l.bbox[2] for l in segs)) + pad
+                cy0 = min(l.bbox[1] for l in segs) - pad
+                cy1 = max(l.bbox[3] for l in segs) + pad
+                cell = img[max(0, cy0):min(h, cy1), max(0, cx0):min(w, cx1)]
+                if cell.size == 0:
                     row.append("")
                     continue
                 txt, c = self.engine.recognize_line(cell)

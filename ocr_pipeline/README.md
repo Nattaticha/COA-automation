@@ -51,7 +51,7 @@ PDF ─► ตรวจว่าเป็น Native หรือ Scan ─► แ
   - `lines_worst`: บรรทัดที่อ่านผิดมากที่สุด
   - `tables_summary`: Cell Accuracy และ TEDS
   - `layout_summary`: Precision และ Recall ของการหาโซนตาราง
-- ทุกรอบที่รันจะถูกต่อท้ายลง `results/runs.csv` พร้อมเวอร์ชันโมเดลและ hash ของ test set
+- ทุกรอบที่รันจะถูกต่อท้ายลง `results/model_metrics.csv` พร้อมเวอร์ชันโมเดลและ hash ของ test set
 
 **4. Fine-tune** (1 รอบ บน CPU ใช้เวลาหลายชั่วโมง)
 ```powershell
@@ -70,6 +70,21 @@ git clone --depth 1 https://github.com/PaddlePaddle/PaddleOCR.git third_party/Pa
 **6. ทดลองกับไฟล์จริง**
 ```powershell
 .\env\Scripts\python.exe -m ocr_pipeline.extract_coa "data\raw\...\COA.pdf" --engine paddle_ft
+```
+
+## ผลที่เก็บไว้ (อ่านย้อนหลังได้)
+| ไฟล์ | เก็บอะไร |
+|---|---|
+| `results/model_metrics.csv` | ทุกการวัดทุกรอบ แบบ 1 แถวต่อ 1 ค่า (append-only) เปิดด้วย Excel แล้วทำ Pivot ได้ |
+| `results/<เวลา>/` | ผลรายบรรทัด (`lines.csv`), รายตาราง (`tables.csv`), `summary.xlsx` และ `run_config.json` ของรอบนั้น |
+| `results/finetune_runs.csv` | สรุป fine-tune 1 แถวต่อ 1 รอบ: base model, เวลา, epoch, lr, ไฟล์ train/val, val acc รายรอบ และ best |
+| `results/finetune_<run>.json` | รายละเอียด fine-tune ทั้งหมดของรอบนั้น |
+| `results/finetune_log.txt` | console log ดิบของการ train ล่าสุด |
+| `models/paddle_rec_ft/train/train.log` | log ของ PaddleOCR เอง (ต่อท้ายทุกรอบ) |
+
+บันทึก fine-tune ที่ train เสร็จแล้วเข้า log:
+```powershell
+.\env\Scripts\python.exe -m ocr_pipeline.log_finetune --note "รอบที่ 1 ..."
 ```
 
 ## ตีความผล

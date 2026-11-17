@@ -190,5 +190,5 @@ def get_engine(name: str) -> Engine:
     if name == "paddle_th":   # PP-OCRv5_mobile_rec cannot read Thai; this one is trained on Thai (+ Latin)
         return PaddleEngine(rec_model_name="th_PP-OCRv5_mobile_rec", name="paddle_th")
     if name == "paddle_ft":
-        return PaddleEngine(rec_model_dir=config.PADDLE_FT_DIR)
+        return PaddleEngine(rec_model_dir=config.PADDLE_FT_DIR, rec_model_name=config.PADDLE_FT_BASE, name="paddle_ft")
     raise ValueError(f"unknown engine {name!r}; choose from {ENGINE_NAMES}")

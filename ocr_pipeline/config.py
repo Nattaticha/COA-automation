@@ -17,7 +17,9 @@ SEED = 42
 MAX_LINE_CHARS = 40               # longer text lines are chunked for rec training
 SCAN_VARIANTS = 2                 # simulated-scan copies per native crop
 
-TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+_TESS = [Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
+         Path.home() / "AppData" / "Local" / "Programs" / "Tesseract-OCR" / "tesseract.exe"]   # winget user install
+TESSERACT_CMD = str(next((p for p in _TESS if p.exists()), _TESS[0]))
 TESSERACT_LANG = "eng"            # COA content to OCR is English (user, 2026-11-16)
 EASYOCR_LANGS = ("en",)
 
@@ -25,4 +27,5 @@ EASYOCR_LANGS = ("en",)
 PADDLE_DET_MODEL = "PP-OCRv5_mobile_det"
 PADDLE_REC_MODEL = "PP-OCRv5_mobile_rec"
 PADDLE_LAYOUT_MODEL = "PP-DocLayout-M"
+PADDLE_FT_BASE = "th_PP-OCRv5_mobile_rec"   # best baseline on English COA lines (2026-11-16) -> fine-tune this
 PADDLE_FT_DIR = MODELS / "paddle_rec_ft" / "inference"
